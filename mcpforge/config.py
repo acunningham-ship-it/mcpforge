@@ -108,18 +108,17 @@ def load_config(config_file: Optional[str] = None) -> dict[str, Any]:
         except (json.JSONDecodeError, yaml.YAMLError if yaml else None) as exc:
             raise ConfigError(f"Failed to parse config file {path}: {exc}")
 
-    # Override with environment variables
-    env_overrides = {
-        "ollama_url": os.environ.get("MCPFORGE_OLLAMA_URL"),
-        "ollama_model": os.environ.get("MCPFORGE_OLLAMA_MODEL"),
-        "default_enhance": os.environ.get("MCPFORGE_DEFAULT_ENHANCE", "").lower() in ("true", "1", "yes"),
-        "output_dir": os.environ.get("MCPFORGE_OUTPUT_DIR"),
-        "plugins": os.environ.get("MCPFORGE_PLUGINS", "").split(",") if os.environ.get("MCPFORGE_PLUGINS") else [],
-    }
-
-    for key, value in env_overrides.items():
-        if value is not None and value != "" and value != []:
-            config[key] = value
+    # Override with environment variables (only if explicitly set)
+    if "MCPFORGE_OLLAMA_URL" in os.environ:
+        config["ollama_url"] = os.environ["MCPFORGE_OLLAMA_URL"]
+    if "MCPFORGE_OLLAMA_MODEL" in os.environ:
+        config["ollama_model"] = os.environ["MCPFORGE_OLLAMA_MODEL"]
+    if "MCPFORGE_DEFAULT_ENHANCE" in os.environ:
+        config["default_enhance"] = os.environ["MCPFORGE_DEFAULT_ENHANCE"].lower() in ("true", "1", "yes")
+    if "MCPFORGE_OUTPUT_DIR" in os.environ:
+        config["output_dir"] = os.environ["MCPFORGE_OUTPUT_DIR"]
+    if "MCPFORGE_PLUGINS" in os.environ:
+        config["plugins"] = [p.strip() for p in os.environ["MCPFORGE_PLUGINS"].split(",") if p.strip()]
 
     return config
 

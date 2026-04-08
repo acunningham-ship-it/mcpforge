@@ -1,0 +1,1 @@
+"""MCPForge example plugins."""

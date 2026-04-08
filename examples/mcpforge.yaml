@@ -1,0 +1,18 @@
+# MCPForge Example Configuration
+# This example shows all available configuration options
+
+# Ollama API endpoint and model for description enhancement
+ollama_url: http://localhost:11434
+ollama_model: qwen2.5:7b
+
+# Use Ollama enhancement by default in generate command
+default_enhance: false
+
+# Default output directory for generated MCP servers
+output_dir: ./generated
+
+# Plugins to load automatically (module names)
+# Each plugin must be importable and provide a transform(endpoints) function
+plugins: []
+  # - examples.plugins.add_auth_headers
+  # - my_custom_plugin
