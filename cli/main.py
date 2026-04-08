@@ -19,6 +19,9 @@ app = typer.Typer(
 )
 console = Console()
 
+# Config subcommand app
+config_app = typer.Typer(help="Manage MCPForge configuration")
+
 EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
 
 EXAMPLE_META = {
@@ -44,8 +47,10 @@ EXAMPLE_META = {
 def generate(
     spec: str = typer.Argument(..., help="OpenAPI spec — URL, file path (.yaml/.json), or '-' for stdin"),
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path (default: <api_name>_mcp.py)"),
-    enhance: bool = typer.Option(False, "--enhance", help="Use Ollama to improve tool descriptions"),
+    enhance: Optional[bool] = typer.Option(None, "--enhance", "--no-enhance", help="Use Ollama to improve tool descriptions (defaults from config)"),
     no_validate: bool = typer.Option(False, "--no-validate", help="Skip validation of generated code"),
+    config: Optional[str] = typer.Option(None, "--config", help="Path to config file (default: mcpforge.yaml/.json)"),
+    plugin: list[str] = typer.Option([], "--plugin", "-p", help="Plugin module to load (can be used multiple times)"),
 ) -> None:
     """Generate an MCP server from an OpenAPI specification."""
     # Import here to keep CLI startup fast
@@ -54,6 +59,19 @@ def generate(
 
     from mcpforge.parser import parse_spec, get_api_info
     from mcpforge.generator import generate_server
+    from mcpforge.config import load_config, ConfigError
+    from mcpforge.plugins import load_plugins, apply_plugins, PluginError
+
+    # Load config
+    try:
+        cfg = load_config(config)
+    except ConfigError as exc:
+        console.print(f"[red]Config error:[/red] {exc}")
+        raise typer.Exit(1)
+
+    # Determine enhance flag (command-line > config > default)
+    if enhance is None:
+        enhance = cfg.get("default_enhance", False)
 
     # Load spec
     if spec == "-":
@@ -78,6 +96,18 @@ def generate(
     console.print(
         f"[green]Found {len(endpoints)} endpoint(s)[/green] in [bold]{api_title}[/bold] ({base_url})"
     )
+
+    # Load and apply plugins
+    all_plugins = list(plugin) + cfg.get("plugins", [])
+    if all_plugins:
+        try:
+            loaded_plugins = load_plugins(all_plugins)
+            console.print(f"[cyan]Applying {len(loaded_plugins)} plugin(s)...[/cyan]")
+            endpoints = apply_plugins(endpoints, loaded_plugins)
+            console.print(f"[green]Plugins applied[/green] — {len(endpoints)} endpoint(s) after transformation")
+        except PluginError as exc:
+            console.print(f"[red]Plugin error:[/red] {exc}")
+            raise typer.Exit(1)
 
     # Optional enhancement
     if enhance:
@@ -192,6 +222,79 @@ def serve(
 
     sys.path.insert(0, str(Path(__file__).parent.parent))
     uvicorn.run("api.main:app", host=host, port=port, reload=reload)
+
+
+@config_app.command()
+def show(config_file: Optional[str] = typer.Option(None, "--config", help="Path to config file")) -> None:
+    """Show current effective MCPForge configuration."""
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).parent.parent))
+
+    from mcpforge.config import load_config, get_config_source, ConfigError
+
+    try:
+        cfg = load_config(config_file)
+    except ConfigError as exc:
+        console.print(f"[red]Config error:[/red] {exc}")
+        raise typer.Exit(1)
+
+    source = get_config_source(cfg)
+    console.print(f"[bold cyan]MCPForge Configuration[/bold cyan] — {source}\n")
+
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Setting", style="cyan")
+    table.add_column("Value", style="green")
+
+    for key, value in cfg.items():
+        if key.startswith("_"):
+            continue
+        table.add_row(key, str(value))
+
+    console.print(table)
+
+
+@config_app.command()
+def init(output_dir: Optional[str] = typer.Option(".", "--dir", "-d", help="Directory for config file")) -> None:
+    """Create mcpforge.yaml in the specified directory."""
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).parent.parent))
+
+    output_path = Path(output_dir) / "mcpforge.yaml"
+
+    if output_path.exists():
+        console.print(f"[yellow]Config file already exists:[/yellow] {output_path}")
+        raise typer.Exit(1)
+
+    template = """# MCPForge Configuration
+# Full documentation: https://github.com/anthropics/mcpforge
+
+# Ollama settings for description enhancement
+ollama_url: http://localhost:11434
+ollama_model: qwen2.5:7b
+
+# Default behavior for generate command
+default_enhance: false
+
+# Default output directory for generated servers
+output_dir: ./generated
+
+# Plugins to load (module names)
+plugins: []
+  # - my_plugin
+  # - my_package.plugin
+"""
+
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(template, encoding="utf-8")
+        console.print(f"[bold green]Created:[/bold green] {output_path}")
+    except Exception as exc:
+        console.print(f"[red]Failed to create config file:[/red] {exc}")
+        raise typer.Exit(1)
+
+
+# Register config subcommand
+app.add_typer(config_app, name="config")
 
 
 if __name__ == "__main__":
