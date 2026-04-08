@@ -51,6 +51,7 @@ def generate(
     no_validate: bool = typer.Option(False, "--no-validate", help="Skip validation of generated code"),
     config: Optional[str] = typer.Option(None, "--config", help="Path to config file (default: mcpforge.yaml/.json)"),
     plugin: list[str] = typer.Option([], "--plugin", "-p", help="Plugin module to load (can be used multiple times)"),
+    claude_config: bool = typer.Option(False, "--claude-config", help="Print Claude Desktop config snippet after generation"),
 ) -> None:
     """Generate an MCP server from an OpenAPI specification."""
     # Import here to keep CLI startup fast
@@ -149,6 +150,32 @@ def generate(
     Path(output).write_text(code, encoding="utf-8")
     console.print(f"[bold green]Generated:[/bold green] {output}")
     console.print(f"\nRun with: [bold]python {output}[/bold]")
+
+    # Claude Desktop config snippet
+    if claude_config:
+        import json as _json
+        abs_path = str(Path(output).resolve())
+        server_name = Path(output).stem.replace("_", "-")
+        config_snippet = {
+            "mcpServers": {
+                server_name: {
+                    "command": "python",
+                    "args": [abs_path],
+                }
+            }
+        }
+        console.print("\n[bold magenta]Claude Desktop config snippet[/bold magenta] (add to claude_desktop_config.json):")
+        syntax = Syntax(
+            _json.dumps(config_snippet, indent=2),
+            "json",
+            theme="monokai",
+        )
+        console.print(syntax)
+        console.print(
+            "[dim]Config file location: "
+            "~/Library/Application Support/Claude/claude_desktop_config.json (macOS) "
+            "or %APPDATA%\\Claude\\claude_desktop_config.json (Windows)[/dim]"
+        )
 
 
 @app.command()
