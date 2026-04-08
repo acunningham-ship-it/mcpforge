@@ -435,6 +435,9 @@
           <div class="mono"><span class="t-comment"># Generate your first MCP server</span></div>
           <div class="mono"><span class="t-prompt">$ </span>mcpforge generate https://petstore.swagger.io/v2/swagger.json</div>
           <span class="t-blank"></span>
+          <div class="mono"><span class="t-comment"># Generate + print Claude Desktop config in one step</span></div>
+          <div class="mono"><span class="t-prompt">$ </span>mcpforge generate https://petstore.swagger.io/v2/swagger.json --claude-config</div>
+          <span class="t-blank"></span>
           <div class="mono"><span class="t-comment"># Run it</span></div>
           <div class="mono"><span class="t-prompt">$ </span>python petstore_mcp.py</div>
         </div>
@@ -458,7 +461,7 @@
       </div>
 
       <div style="margin-top:32px;">
-        <p style="color:var(--dim); font-size:0.9rem; margin-bottom:16px;"><strong style="color:var(--text);">Add to Claude Desktop</strong> — edit your claude_desktop_config.json:</p>
+        <p style="color:var(--dim); font-size:0.9rem; margin-bottom:16px;"><strong style="color:var(--text);">Add to Claude Desktop</strong> — use <code>--claude-config</code> to auto-generate, or manually edit claude_desktop_config.json:</p>
         <div class="code-block">
           <div class="code-header"><span class="code-lang">json</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
           <div class="mono" style="font-size:0.85rem;">{
