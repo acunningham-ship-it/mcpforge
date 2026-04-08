@@ -173,5 +173,26 @@ def demo(
     console.print(f"Run with: [bold]python {file_path}[/bold]")
 
 
+@app.command()
+def serve(
+    port: int = typer.Option(8000, "--port", "-p", help="Port to listen on"),
+    host: str = typer.Option("0.0.0.0", "--host", help="Host to bind"),
+    reload: bool = typer.Option(False, "--reload", help="Enable auto-reload (dev mode)"),
+) -> None:
+    """Start the MCPForge web server (UI + REST API)."""
+    try:
+        import uvicorn
+    except ImportError:
+        console.print("[red]uvicorn not found.[/red] Install with: pip install uvicorn")
+        raise typer.Exit(1)
+
+    console.print(f"\n[bold cyan]MCPForge[/bold cyan] web server starting...")
+    console.print(f"  UI:  [link]http://localhost:{port}[/link]")
+    console.print(f"  API: [link]http://localhost:{port}/docs[/link]\n")
+
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    uvicorn.run("api.main:app", host=host, port=port, reload=reload)
+
+
 if __name__ == "__main__":
     app()
