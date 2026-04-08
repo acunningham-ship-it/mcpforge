@@ -166,6 +166,69 @@ class TestParseSpec:
         assert sec.scheme == "bearer"
         assert "BEARERAUTH" in sec.env_var.upper()
 
+    def test_swagger2_body_param(self):
+        """Swagger 2.0 `in: body` parameters should appear as request_body, not be silently dropped."""
+        spec = {
+            "swagger": "2.0",
+            "info": {"title": "Petstore", "version": "1.0"},
+            "host": "petstore.example.com",
+            "basePath": "/v2",
+            "paths": {
+                "/pet": {
+                    "post": {
+                        "operationId": "addPet",
+                        "summary": "Add a new pet",
+                        "parameters": [
+                            {
+                                "in": "body",
+                                "name": "body",
+                                "required": True,
+                                "schema": {"type": "object"},
+                            }
+                        ],
+                        "responses": {"200": {"description": "OK"}},
+                    }
+                }
+            },
+        }
+        endpoints = parse_spec(spec)
+        assert len(endpoints) == 1
+        ep = endpoints[0]
+        # Body param should be in request_body, not in parameters
+        assert ep.request_body != {}
+        assert ep.request_body.get("required") is True
+        body_locations = [p.location for p in ep.parameters]
+        assert "body" not in body_locations
+
+    def test_swagger2_body_param_in_generated_code(self):
+        """Generated code for Swagger 2.0 body endpoints should include body parameter."""
+        spec = {
+            "swagger": "2.0",
+            "info": {"title": "Store API", "version": "1.0"},
+            "host": "api.example.com",
+            "basePath": "/v1",
+            "paths": {
+                "/items": {
+                    "post": {
+                        "operationId": "createItem",
+                        "summary": "Create item",
+                        "parameters": [
+                            {
+                                "in": "body",
+                                "name": "body",
+                                "required": True,
+                                "schema": {"type": "object"},
+                            }
+                        ],
+                        "responses": {"201": {"description": "Created"}},
+                    }
+                }
+            },
+        }
+        endpoints = parse_spec(spec)
+        code = generate_server(endpoints, api_title="Store API", base_url="https://api.example.com/v1")
+        assert "def createitem(body: dict)" in code
+
     def test_empty_paths(self):
         spec = {"openapi": "3.0.0", "info": {"title": "Empty", "version": "1"}, "paths": {}}
         endpoints = parse_spec(spec)

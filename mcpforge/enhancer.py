@@ -11,8 +11,8 @@ import httpx
 from .parser import Endpoint
 
 OLLAMA_BASE = "http://localhost:11434"
-DEFAULT_MODEL = "llama3.2"
-TIMEOUT = 60.0
+DEFAULT_MODEL = "qwen2.5:0.5b"
+TIMEOUT = 15.0  # Per-call timeout — keep enhancement fast
 
 
 def _ollama_available() -> bool:
@@ -43,7 +43,7 @@ def _ollama_generate(prompt: str, model: str) -> str:
         "model": model,
         "prompt": prompt,
         "stream": False,
-        "options": {"temperature": 0.3, "num_predict": 200},
+        "options": {"temperature": 0.3, "num_predict": 80},
     }
     resp = httpx.post(
         f"{OLLAMA_BASE}/api/generate",

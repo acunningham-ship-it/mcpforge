@@ -196,6 +196,19 @@ def _parse_operation(
     parameters = _parse_parameters(raw_params, spec)
     request_body = _parse_request_body(operation, spec)
 
+    # Swagger 2.0: body params appear as `in: body` inside parameters.
+    # Extract them and convert to request_body so the generator includes them.
+    if not request_body:
+        body_params = [p for p in parameters if p.location == "body"]
+        if body_params:
+            bp = body_params[0]
+            request_body = {
+                "required": bp.required,
+                "description": bp.description,
+                "schema": bp.schema,
+            }
+    parameters = [p for p in parameters if p.location != "body"]
+
     # Resolve security
     op_security = operation.get("security", global_security)
     security: list[SecurityRequirement] = []
